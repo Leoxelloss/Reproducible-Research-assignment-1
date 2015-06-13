@@ -1,0 +1,110 @@
+---
+title: "Reproducible Research Assignment 1"
+author: "Liao Dehui"
+date: "Wednesday, June 10, 2015"
+output: slidy_presentation
+---
+
+## Description
+
+This file will detail the steps of obtaining the answer for the solution for the questions in assignment 1.
+
+##Loading and preprocessing the data
+
+```{r loading the data and processing}
+library(ggplot2)
+setwd("E:/workspace/assignment/Reproducible-Research-assignment-1") ##setting the working directory
+data<-read.csv("activity.csv", colClasses = c("integer", "Date", "factor"))                                      ## reading the data
+
+#data[is.na(data)] <- 0
+```
+
+## What is mean total number of steps taken per day?
+- Ignoring N.A. values 
+```{r getting results and plotting,cache=TRUE}
+total <-aggregate(data$steps,by=list(data$date),sum)
+
+mean <-mean(total$x,na.rm=TRUE)
+median <-median(total$x,na.rm=TRUE)
+```
+
+- Histogram of the total number of steps taken each day:
+```{r plot graph 1}
+qplot(total$x, xlab='Total steps per day', ylab='Frequency', binwidth=500)
+```
+
+- The mean for each day is:
+```{r display mean}
+mean
+```
+- The median for each day is:
+```{r display median}
+median
+```
+## What is the average daily activity pattern?
+
+```{r plot graph 2}
+average <-aggregate(data$steps,by=list(interval = data$interval),mean,na.rm=TRUE)
+plot(average$interval,average$x,xlab = "Date",ylab = "Average number of steps",type = "l",col="black")
+  title(main = "Average number of steps per day")
+```
+## Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+```{r plot max number of steps}
+average[average$x==max(average$x),]
+```
+## Number of missing values
+```{r plot number of missing values}
+sum(is.na(data$steps))
+```
+## To minimise the impact of the missing value we will be filling the missing input with the average of that day
+```{r plot filling the missing values}
+dataFork<-data
+missingFrame<-data[is.na(data),]
+for (i in 1:nrow(missingFrame)) {
+   dataFork[which(data$interval==missingFrame$interval[i] & data$date==missingFrame$date[i]),]$steps  <- average[which(missingFrame$interval[i] == average$interval), ]$x
+   }
+head(dataFork)
+```
+- Histogram of the total number of steps taken each day (NA filled)
+```{r Histogram na filled ,cache=TRUE}
+total <-aggregate(dataFork$steps,by=list(dataFork$date),sum)
+qplot(total$x, xlab='Total steps per day (Data Filled)', ylab='Frequency', binwidth=500)
+```
+- Report the mean and median total number of steps taken per day
+```{r getting results and plotting na filled,cache=TRUE}
+NewMean <-mean(total$x)
+NewMedian <-median(total$x)
+NewMean
+mean
+NewMedian
+median
+```
+ - Comparing the results of the new and old mean, the values are the same
+ - Comparing the results of the new and old Median, the values of the new median is slightly higher
+ - In conclusion , normalising the missing values with averaged interval value will not affect the results much.
+
+## Differences in activity patterns between weekdays and weekends
+-Create a new factor variable in the dataset with two levels -- "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+
+```{r  ,cache=TRUE}
+dataFork$weekdays <- factor(format(dataFork$date, "%A"))
+levels(dataFork$weekdays) <- list(weekday = c("Monday", "Tuesday",
+                                             "Wednesday", 
+                                             "Thursday", "Friday"),
+                                 weekend = c("Saturday", "Sunday"))
+levels(dataFork$weekdays)
+table(dataFork$weekdays)
+```
+- panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis)
+```{r  ,cache=TRUE}
+avgSteps <- aggregate(dataFork$steps, 
+                      list(interval = as.numeric(as.character(dataFork$interval)), 
+                           weekdays = dataFork$weekdays),
+                      FUN = "mean")
+names(avgSteps)[3] <- "meanOfSteps"
+library(lattice)
+xyplot(avgSteps$meanOfSteps ~ avgSteps$interval | avgSteps$weekdays, 
+       layout = c(1, 2), type = "l", 
+       xlab = "Interval", ylab = "Number of steps")
+```
